@@ -27,11 +27,103 @@
     max-width: 100%;
   }
 
+  .result-row {
+    grid-column: 1 / -1;
+    /* spans both columns */
+  }
+
   #ir_canvas_result {
     background-color: black;
+    max-height: 60vh;
+    /* limits height on wide screens */
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: contain;
   }
-  #ir_canvas_result:hover {
-    background-color: white;
+
+  .result-canvas-wrapper {
+    position: relative;
+    width: 100%;
+  }
+
+  .bg-controls {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 10;
+    display: flex;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.75);
+    padding: 6px;
+    border-radius: 6px;
+    backdrop-filter: blur(4px);
+  }
+
+  .bg-controls button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    border: 1px solid #ccc;
+    background: #fff;
+    border-radius: 4px;
+    opacity: 0.7;
+  }
+
+  .bg-controls button:hover {
+    opacity: 1;
+  }
+
+  .bg-controls button.active {
+    border-color: #0078d4;
+    box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.3);
+    opacity: 1;
+  }
+
+  .swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    border: 1px solid #999;
+  }
+
+  .swatch-black {
+    background: black;
+  }
+
+  .swatch-white {
+    background: white;
+  }
+
+  .file-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    padding: 10px 16px;
+    margin-bottom: 10px;
+
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+
+    background: linear-gradient(135deg, #4f8cff, #6a5cff);
+    border-radius: 8px;
+    cursor: pointer;
+
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    transition: all 0.2s ease;
+  }
+
+  .file-label:hover {
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
+  }
+
+  .file-label:active {
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
   }
 </style>
 </head>
@@ -39,19 +131,52 @@
 
 <div class="grid">
   <div class="column">
-    <input type="file" accept="image/*" id="ir_input_img1" autocomplete="off"/>
-    <textarea style="display: none;" id="ir_color_img1">{"min": 0, "max": 127, "base": [0, 0, 0]}</textarea>
+    <input type="file" accept="image/*" id="ir_input_img1" autocomplete="off" hidden/>
+    <label for="ir_input_img1" class="file-label"> Select Image </label>
+    <textarea style="display: none;" id="ir_color_img1">{"min": 0, "max": 130, "base": [0, 0, 0]}</textarea>
     <canvas id="ir_canvas_img1"></canvas>
   </div>
 
   <div class="column">
-    <input type="file" accept="image/*" id="ir_input_img2" autocomplete="off"/>
+    <input type="file" accept="image/*" id="ir_input_img2" autocomplete="off" hidden/>
+    <label for="ir_input_img2" class="file-label"> Select Image </label>
     <canvas id="ir_canvas_img2"></canvas>
-    <textarea style="display: none;" id="ir_color_img2">{"min": 128, "max": 255, "base": [255, 255, 255]}</textarea>
+    <textarea style="display: none;" id="ir_color_img2">{"min": 120, "max": 255, "base": [255, 255, 255]}</textarea>
   </div>
 </div>
 
-<canvas id="ir_canvas_result"></canvas>
+<div class="column result-row">
+  <div class="result-canvas-wrapper">
+    <div class="bg-controls">
+      <button type="button" data-bg="black" class="active">
+        <span class="swatch swatch-black"></span>
+        Black
+      </button>
+      <button type="button" data-bg="white">
+        <span class="swatch swatch-white"></span>
+        White
+      </button>
+    </div>
+    <canvas id="ir_canvas_result"></canvas>
+  </div>
+</div>
+
+<script>
+  const resultCanvas = document.getElementById('ir_canvas_result');
+  const bgButtons = document.querySelectorAll('.bg-controls button');
+
+  bgButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      // update canvas background
+      resultCanvas.style.backgroundColor = btn.dataset.bg;
+
+      // update active state
+      bgButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+</script>
+
 
 <script>
 function jsonDecode(str) {
@@ -64,6 +189,7 @@ function jsonDecode(str) {
   }
 }
 
+const BORDER = 5;
 const imageResources = {};
 
 for (const i of ["img1", "img2", "result"]) {
@@ -75,7 +201,7 @@ for (const i of ["img1", "img2", "result"]) {
 }
 
 // 2:1 canvas
-function resizeCanvas(canvas, width = 800) {
+function resizeCanvas(canvas, width = 400) {
   canvas.width  = width;
   canvas.height = width / 4 * 3;
 }
@@ -103,29 +229,42 @@ for (const i of Object.keys(imageResources)) {
 
 function drawCoverGrayscale(img, res) {
   const {canvas, ctx} = res;
+  // disable border
+  const BORDER = 0;
 
   const cw = canvas.width;
   const ch = canvas.height;
 
+  // Inner drawable area (inside transparent border)
+  const dw = cw - BORDER * 2;
+  const dh = ch - BORDER * 2;
+
   const ir = img.width / img.height;
-  const cr = cw / ch;
+  const dr = dw / dh;
 
   let sx, sy, sw, sh;
 
-  if (ir > cr) {
+  if (ir > dr) {
     sh = img.height;
-    sw = img.height * cr;
+    sw = img.height * dr;
     sx = (img.width - sw) / 2;
     sy = 0;
   } else {
     sw = img.width;
-    sh = img.width / cr;
+    sh = img.width / dr;
     sx = 0;
     sy = (img.height - sh) / 2;
   }
 
+  // Clear entire canvas (keeps border transparent)
   ctx.clearRect(0, 0, cw, ch);
-  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
+
+  // Draw image inside border
+  ctx.drawImage(
+    img,
+    sx, sy, sw, sh,
+    BORDER, BORDER, dw, dh
+  );
 
   applyGrayscale127(res);
 }
@@ -179,35 +318,53 @@ function updateResult(imageResources) {
   console.log("dataR", dataR.length);
 
   for (let i = 0; i < dataR.length; i += 4) {
-    let d1 = data1[i] / 255; // take from red
-    let d2 = data2[i] / 255; // take from red
 
-    d1 = Math.min(1, Math.max(0, d1));
-    d2 = Math.min(1, Math.max(0, d2));
+    if (i / 4 < canvasR.width * 3) {
+      dataR[i + 3] = 0;
+    }
 
-    const alpha = Math.round((1 - (d1 - d2) / (base1 - base2)) * 255 );
-    const value = Math.round((base1 + (d1 - base1) / alpha * 255) * 255);
+    let d1r = data1[i] / 255; // take from red
+    let d2r = data2[i] / 255; // take from red
+
+    d1r = Math.min(1, Math.max(0, d1r));
+    d2r = Math.min(1, Math.max(0, d2r));
+
+    if (d2r < d1r) {
+      // overlap
+      if ((i/4|0) % 2) {
+        d1r = d2r;
+      } else {
+        d2r = d1r;
+      }
+    }
+
+    const alpha = Math.round((1 - (d1r - d2r) / (base1 - base2)) * 255 );
+    const value = Math.round((base1 + (d1r - base1) / alpha * 255) * 255);
 
     dataR[i]     = value;
     dataR[i + 1] = value;
     dataR[i + 2] = value;
     dataR[i + 3] = alpha;
-
-    if (i === 0) {
-      console.log("red1", data1[i]);
-      console.log("red2", data2[i]);
-      console.log("d1", d1);
-      console.log("d2", d2);
-      console.log("base1", base1);
-      console.log("base2", base2);
-      console.log("alpha", alpha);
-      console.log("value", value);
-      console.log(dataR.slice(0, 4));
-    }
   }
 
   ctxR.putImageData(imageDataR, 0, 0);
+  makeTransparentBorder(canvasR, BORDER);
 
+}
+
+function makeTransparentBorder(canvas, border = 10) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+
+  // Top
+  ctx.clearRect(0, 0, w, border);
+  // Bottom
+  ctx.clearRect(0, h - border, w, border);
+  // Left
+  ctx.clearRect(0, 0, border, h);
+  // Right
+  ctx.clearRect(w - border, 0, border, h);
 }
 
 </script>
