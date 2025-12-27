@@ -13,7 +13,8 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 20px;
-    max-width: 100%;
+    max-width: 800px;
+    margin: auto;
   }
 
   .column {
@@ -23,18 +24,19 @@
 
   canvas {
     border: 1px solid #ccc;
-    margin-top: 10px;
+    margin-bottom: 10px;
     max-width: 100%;
+    box-sizing: border-box;
   }
 
   .result-row {
-    grid-column: 1 / -1;
-    /* spans both columns */
+    max-width: 800px;
+    margin: auto;
   }
 
   #ir_canvas_result {
     background-color: black;
-    max-height: 60vh;
+    max-height: 50vh;
     /* limits height on wide screens */
     width: 100%;
     height: auto;
@@ -48,10 +50,6 @@
   }
 
   .bg-controls {
-    position: absolute;
-    top: 8px;
-    left: 8px;
-    z-index: 10;
     display: flex;
     gap: 6px;
     background: rgba(255, 255, 255, 0.75);
@@ -146,19 +144,20 @@
 </div>
 
 <div class="column result-row">
-  <div class="result-canvas-wrapper">
-    <div class="bg-controls">
-      <button type="button" data-bg="black" class="active">
-        <span class="swatch swatch-black"></span>
-        Black
-      </button>
-      <button type="button" data-bg="white">
-        <span class="swatch swatch-white"></span>
-        White
-      </button>
-    </div>
-    <canvas id="ir_canvas_result"></canvas>
+  <div class="bg-controls">
+    <button type="button" data-bg="black" class="active">
+      <span class="swatch swatch-black"></span>
+      Black
+    </button>
+    <button type="button" data-bg="white">
+      <span class="swatch swatch-white"></span>
+      White
+    </button>
   </div>
+</div>
+
+<div class="column result-row">
+  <canvas id="ir_canvas_result"></canvas>
 </div>
 
 <script>
