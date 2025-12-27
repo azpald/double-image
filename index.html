@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Canvas Cover + Grayscale</title>
+<style>
+  body {
+    font-family: sans-serif;
+    padding: 20px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    max-width: 100%;
+  }
+
+  .column {
+    display: flex;
+    flex-direction: column;
+  }
+
+  canvas {
+    border: 1px solid #ccc;
+    margin-top: 10px;
+    max-width: 100%;
+  }
+</style>
+</head>
+<body>
+
+<div class="grid">
+  <div class="column">
+    <input type="file" accept="image/*" id="ir_input_img1" autocomplete="off"/>
+    <canvas id="ir_canvas_img1"></canvas>
+  </div>
+
+  <div class="column">
+    <input type="file" accept="image/*" id="ir_input_img2" autocomplete="off"/>
+    <canvas id="ir_canvas_img2"></canvas>
+  </div>
+</div>
+
+<canvas id="ir_canvas_result"></canvas>
+
+
+<script>
+
+const imageResources = {};
+
+for (const i of ["img1", "img2", "result"]) {
+    imageResources[i] ??= {};
+    imageResources[i].input  = document.getElementById(`ir_input_${i}`) ?? null;
+    imageResources[i].canvas = document.getElementById(`ir_canvas_${i}`);
+    imageResources[i].ctx = imageResources[i].canvas.getContext("2d");
+}
+
+// 2:1 canvas
+function resizeCanvas(canvas, width = 800) {
+  canvas.width  = width;
+  canvas.height = width / 2;
+}
+
+for (const i of Object.keys(imageResources)) {
+  const res = imageResources[i];
+
+  const canvas = res.canvas;
+  const input  = res.input;
+  const ctx    = res.ctx;
+
+  resizeCanvas(canvas);
+
+  input && input.addEventListener("change", () => {
+    const file = input.files[0];
+    if (!file) return;
+  
+    const img = new Image();
+    img.onload = () => drawCoverGrayscale(img, res);
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+
+function drawCoverGrayscale(img, res) {
+  const {canvas, ctx} = res;
+
+  const cw = canvas.width;
+  const ch = canvas.height;
+
+  const ir = img.width / img.height;
+  const cr = cw / ch;
+
+  let sx, sy, sw, sh;
+
+  if (ir > cr) {
+    sh = img.height;
+    sw = img.height * cr;
+    sx = (img.width - sw) / 2;
+    sy = 0;
+  } else {
+    sw = img.width;
+    sh = img.width / cr;
+    sx = 0;
+    sy = (img.height - sh) / 2;
+  }
+
+  ctx.clearRect(0, 0, cw, ch);
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
+
+  applyGrayscale127(res);
+}
+
+function applyGrayscale127(res) {
+  const {canvas, ctx} = res;
+
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+
+    // Grayscale
+    let gray = 0.299 * r + 0.587 * g + 0.114 * b;
+
+    // Map 0–255 → 0–127
+    gray = Math.round(gray * 127 / 255);
+
+    // // black and white
+    // gray = Math.floor(gray/64) * 127;
+    gray += 127;
+
+    data[i]     = gray;
+    data[i + 1] = gray;
+    data[i + 2] = gray;
+    // alpha unchanged
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+}
+</script>
+
+</body>
+</html>
