@@ -88,14 +88,6 @@
       border: 1px solid #999;
     }
 
-    .swatch-black {
-      background: black;
-    }
-
-    .swatch-white {
-      background: white;
-    }
-
     .file-label {
       display: inline-flex;
       align-items: center;
@@ -130,15 +122,21 @@
 
   <div class="grid">
     <div class="column">
+      <input type="color" id="ir_colorp_img1" value="#000000" autocomplete="off" hidden />
+      <label for="-ir_colorp_img1" class="file-label"> Background color 1 </label>
+
       <input type="file" accept="image/*, android/allowCamera" id="ir_input_img1" autocomplete="off" hidden />
-      <label for="ir_input_img1" class="file-label"> Select Image </label>
-      <textarea style="display: none;" id="ir_color_img1">{"min": 0, "max": 130, "base": [0, 0, 0]}</textarea>
+      <label for="ir_input_img1" class="file-label"> Select image </label>
+      <textarea style="display: none;" id="ir_color_img1">{"min": 0, "max": 120, "base": [0, 0, 0]}</textarea>
       <canvas id="ir_canvas_img1"></canvas>
     </div>
 
     <div class="column">
+      <input type="color" id="ir_colorp_img2" value="#000000" autocomplete="off" hidden />
+      <label for="-ir_colorp_img2" class="file-label"> Background color 2 </label>
+
       <input type="file" accept="image/*, android/allowCamera" id="ir_input_img2" autocomplete="off" hidden />
-      <label for="ir_input_img2" class="file-label"> Select Image </label>
+      <label for="ir_input_img2" class="file-label"> Select image </label>
       <canvas id="ir_canvas_img2"></canvas>
       <textarea style="display: none;" id="ir_color_img2">{"min": 120, "max": 255, "base": [255, 255, 255]}</textarea>
     </div>
@@ -146,14 +144,15 @@
 
   <div class="column result-row">
     <div class="bg-controls">
-      <button type="button" data-bg="black" class="active">
-        <span class="swatch swatch-black"></span>
-        Black
+      <button type="button" data-bg="black" data-ref="ir_colorp_img1" class="active">
+        <span class="swatch" id="ir_swatch_img1"></span>
+        Background 1
       </button>
-      <button type="button" data-bg="white">
-        <span class="swatch swatch-white"></span>
-        White
+      <button type="button" data-bg="white" data-ref="ir_colorp_img2">
+        <span class="swatch" id="ir_swatch_img2"></span>
+        Background 2
       </button>
+      <button type="button" id="download-btn">Download Image</button>
     </div>
   </div>
 
@@ -167,8 +166,15 @@
 
     bgButtons.forEach(btn => {
       btn.addEventListener('click', () => {
+        // get color value
+        let color = "#000";
+        const input = document.getElementById(btn.dataset.ref);
+        if (input) {
+          color = input.value;
+        }
+
         // update canvas background
-        resultCanvas.style.backgroundColor = btn.dataset.bg;
+        resultCanvas.style.backgroundColor = color;
 
         // update active state
         bgButtons.forEach(b => b.classList.remove('active'));
@@ -179,6 +185,20 @@
 
 
   <script>
+    function cubicBezier(t, p1, p2, p3, p4) {
+      // Clamp input to [0, 1]
+      t = Math.max(0, Math.min(1, t));
+
+      const u = 1 - t;
+
+      return (
+        u * u * u * p1 +
+        3 * u * u * t * p2 +
+        3 * u * t * t * p3 +
+        t * t * t * p4
+      );
+    }
+
     function jsonDecode(str) {
       if (!str) return null;
       try {
@@ -188,14 +208,24 @@
         return null;
       }
     }
+    function hexToRgb(hex) {
+      hex = hex.replace("#", "");
+      return [
+        parseInt(hex.substring(0, 2), 16),
+        parseInt(hex.substring(2, 4), 16),
+        parseInt(hex.substring(4, 6), 16),
+      ];
+    }
 
     const BORDER = 5;
     const imageResources = {};
 
     // Resize canvas
     function resizeCanvas(canvas, width = 400) {
-      canvas.width = width;
-      canvas.height = width / 4 * 3;
+      // canvas.width = width;
+      // canvas.height = width / 4 * 3;
+      canvas.width = 600;
+      canvas.height = 200;
     }
 
     // Wait for DOM to be fully ready
@@ -210,6 +240,8 @@
         imageResources[i].canvas = document.getElementById(`ir_canvas_${i}`);
         imageResources[i].ctx = imageResources[i].canvas.getContext("2d");
         imageResources[i].configColor = jsonDecode(document.getElementById(`ir_color_${i}`)?.value);
+        imageResources[i].pickerColor = document.getElementById(`ir_colorp_${i}`) ?? null;
+        imageResources[i].swatchColor = document.getElementById(`ir_swatch_${i}`) ?? null;
       }
 
       for (const i of Object.keys(imageResources)) {
@@ -218,8 +250,35 @@
         const canvas = res.canvas;
         const input = res.input;
         const ctx = res.ctx;
+        const configColor = res.configColor;
+        const pickerColor = res.pickerColor;
+        const swatchColor = res.swatchColor;
 
         resizeCanvas(canvas);
+
+        if (pickerColor) {
+          const setColor = rgb => {
+            const color = "rgb(" + rgb.join(",") + ")";
+            const textColor = Math.round((255 - Math.max(...rgb)) / 255) * 255;
+            const colorInverse = "rgb(" + [textColor, textColor, textColor].join(",") + ")";
+            pickerColor.nextElementSibling.style.background = color;
+            pickerColor.nextElementSibling.style.color = colorInverse;
+            swatchColor.style.background = color;
+            swatchColor.parentNode.click();
+            configColor.base = rgb;
+
+            return { color };
+          };
+          pickerColor.addEventListener("input", (ev) => {
+            const target = ev.target;
+            setColor(hexToRgb(target.value));
+            updateResult(imageResources);
+          });
+          if (configColor?.base) {
+            const { color } = setColor(configColor.base);
+            pickerColor.value = color;
+          }
+        }
 
         if (input) {
           console.log('Setting up handler for input:', input.id);
@@ -276,6 +335,16 @@
           console.log('No input found for:', i);
         }
       }
+
+      // Download result
+      document.getElementById("download-btn").addEventListener("click", async () => {
+        const canvas = imageResources["result"].canvas;
+        const link = document.createElement("a");
+        link.download = "generated-image.png";
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+      });
+
     }
 
 
@@ -370,12 +439,16 @@
 
       for (let i = 0; i < dataR.length; i += 4) {
 
-        if (i / 4 < canvasR.width * 3) {
-          dataR[i + 3] = 0;
-        }
-
         let d1r = data1[i] / 255; // take from red
         let d2r = data2[i] / 255; // take from red
+
+        // // Real value before get altered
+        // const realValue1 = (data1[i] - configColor1.min) / (configColor1.max - configColor1.min);
+        // const realValue2 = (data2[i] - configColor2.min) / (configColor2.max - configColor2.min);
+        // if (Math.abs(realValue2 - realValue1) < 0.1) {
+        //   d1r = realValue1;
+        //   d2r = realValue2;
+        // }
 
         d1r = Math.min(1, Math.max(0, d1r));
         d2r = Math.min(1, Math.max(0, d2r));
@@ -394,6 +467,12 @@
 
         const alpha = Math.round((1 - (d1r - d2r) / (base1 - base2)) * 255);
         const value = Math.round((base1 + (d1r - base1) / alpha * 255) * 255);
+
+        // for (let j = 0; j < 3; j++) {
+        //   const c = configColor1.base[j] + Math.round(value * (configColor2.base[j] - configColor1.base[j]) / 255);
+        //   dataR[i + j] = c;
+        // }
+        // value = Math.round(cubicBezier(value / 255, 0.64, -0.00, 0.39, 1.00 ) * 255);
 
         dataR[i] = value;
         dataR[i + 1] = value;
