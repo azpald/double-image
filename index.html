@@ -49,7 +49,7 @@
       width: 100%;
     }
 
-    .bg-controls {
+    .btn-controls {
       display: flex;
       gap: 6px;
       background: rgba(255, 255, 255, 0.75);
@@ -58,7 +58,7 @@
       backdrop-filter: blur(4px);
     }
 
-    .bg-controls button {
+    .btn-controls button {
       display: flex;
       align-items: center;
       gap: 6px;
@@ -71,11 +71,11 @@
       opacity: 0.7;
     }
 
-    .bg-controls button:hover {
+    .btn-controls button:hover {
       opacity: 1;
     }
 
-    .bg-controls button.active {
+    .btn-controls button.active {
       border-color: #0078d4;
       box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.3);
       opacity: 1;
@@ -115,6 +115,43 @@
     .file-label:active {
       box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
     }
+
+    .spoiler input[type="checkbox"] {
+      display: none;
+    }
+
+    .spoiler-label {
+      display: inline-block;
+      padding: 0.4em 0.7em;
+      background: #eee;
+      border-radius: 4px;
+      text-decoration: none;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .spoiler-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease, opacity 0.3s ease;
+      opacity: 0;
+    }
+
+    /* When checked, reveal content */
+    .spoiler input:checked~.spoiler-content {
+      max-height: 500px;
+      /* large enough to fit content */
+      overflow: auto;
+      opacity: 1;
+    }
+
+    .spoiler-label::after {
+      content: " ›";
+    }
+
+    .spoiler input:checked+.spoiler-label::after {
+      content: " ‹";
+    }
   </style>
 </head>
 
@@ -142,8 +179,32 @@
     </div>
   </div>
 
+  <div class="spoiler column result-row">
+    <input type="checkbox" id="spoiler-1">
+    <label for="spoiler-1" class="spoiler-label">
+      Configs
+    </label>
+
+    <div class="spoiler-content">
+      <!-- <div class="column result-row">
+        <div style="background: linear-gradient(to right, #000 0%, #fff 100%); margin-bottom: -1ch;">&nbsp;</div>
+        <input type="range" min="0" max="255" step="1">
+      </div> -->
+
+      <div class="column result-row">
+        <div class="btn-controls">
+          <span style="padding: 4px 8px;">Canvas size:</span>
+          <button type="button" onclick="setCanvasSize(900,300)">Twitter banner (900 x 300)</button>
+          <button type="button" onclick="setCanvasSize(400,300)">(400 x 300)</button>
+        </div>
+      </div>
+      <div class="column result-row">&nbsp;</div>
+
+    </div>
+  </div>
+
   <div class="column result-row">
-    <div class="bg-controls">
+    <div class="btn-controls" id="bg-controls">
       <button type="button" data-ref="ir_colorp_img1" class="active">
         <span class="swatch" id="ir_swatch_img1"></span>
         Background 1
@@ -162,7 +223,7 @@
 
   <script>
     const resultCanvas = document.getElementById('ir_canvas_result');
-    const bgButtons = document.querySelectorAll('.bg-controls button');
+    const bgButtons = document.querySelectorAll('#bg-controls button');
 
     bgButtons.forEach(btn => {
       btn.addEventListener('click', () => {
@@ -198,7 +259,6 @@
         t * t * t * p4
       );
     }
-
     function jsonDecode(str) {
       if (!str) return null;
       try {
@@ -223,15 +283,30 @@
       return `#${hex}`;
     }
 
-    const BORDER = 5;
+    const BORDER = 1;
+    let CANVAS_WIDTH = 900, CANVAS_HEIGHT = 300;
     const imageResources = {};
+
+    // Set canvas size
+    function setCanvasSize(width, height) {
+      CANVAS_WIDTH = width;
+      CANVAS_HEIGHT = height;
+
+      for (const res of Object.values(imageResources)) {
+        const canvas = res.canvas;
+        const image = res.image;
+        resizeCanvas(canvas, CANVAS_WIDTH, CANVAS_HEIGHT);
+        image && drawCoverGrayscale(image, res);
+      }
+      updateResult(imageResources);
+    }
 
     // Resize canvas
     function resizeCanvas(canvas, width = 400, height = 300) {
-      // canvas.width = width;
-      // canvas.height = width / 4 * 3;
-      canvas.width = 900;
-      canvas.height = 300;
+      canvas.width = width;
+      canvas.height = height;
+      // canvas.width = 900;
+      // canvas.height = 300;
     }
 
     // Wait for DOM to be fully ready
@@ -260,7 +335,7 @@
         const pickerColor = res.pickerColor;
         const swatchColor = res.swatchColor;
 
-        resizeCanvas(canvas);
+        resizeCanvas(canvas, CANVAS_WIDTH, CANVAS_HEIGHT);
 
         if (pickerColor) {
           const setColor = rgb => {
@@ -359,6 +434,8 @@
 
     function drawCoverGrayscale(img, res) {
       const { canvas, ctx } = res;
+      res.image = img;
+
       // disable border
       const BORDER = 0;
 
