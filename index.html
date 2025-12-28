@@ -100,7 +100,7 @@
       font-weight: 600;
       color: #ffffff;
 
-      background: linear-gradient(135deg, #4f8cff, #6a5cff);
+      background: #4f8cff;
       border-radius: 8px;
       cursor: pointer;
 
@@ -144,11 +144,11 @@
 
   <div class="column result-row">
     <div class="bg-controls">
-      <button type="button" data-bg="black" data-ref="ir_colorp_img1" class="active">
+      <button type="button" data-ref="ir_colorp_img1" class="active">
         <span class="swatch" id="ir_swatch_img1"></span>
         Background 1
       </button>
-      <button type="button" data-bg="white" data-ref="ir_colorp_img2">
+      <button type="button" data-ref="ir_colorp_img2">
         <span class="swatch" id="ir_swatch_img2"></span>
         Background 2
       </button>
@@ -216,16 +216,22 @@
         parseInt(hex.substring(4, 6), 16),
       ];
     }
+    function rgbToHex(rgb) {
+      const hex = rgb.map(component => {
+        return (component % 256).toString(16).padStart(2, '0');
+      }).join('');
+      return `#${hex}`;
+    }
 
     const BORDER = 5;
     const imageResources = {};
 
     // Resize canvas
-    function resizeCanvas(canvas, width = 400) {
+    function resizeCanvas(canvas, width = 400, height = 300) {
       // canvas.width = width;
       // canvas.height = width / 4 * 3;
-      canvas.width = 600;
-      canvas.height = 200;
+      canvas.width = 900;
+      canvas.height = 300;
     }
 
     // Wait for DOM to be fully ready
@@ -264,19 +270,22 @@
             pickerColor.nextElementSibling.style.background = color;
             pickerColor.nextElementSibling.style.color = colorInverse;
             swatchColor.style.background = color;
-            swatchColor.parentNode.click();
+            // swatchColor.parentNode.click();
             configColor.base = rgb;
 
             return { color };
           };
+
           pickerColor.addEventListener("input", (ev) => {
             const target = ev.target;
             setColor(hexToRgb(target.value));
             updateResult(imageResources);
           });
+
           if (configColor?.base) {
-            const { color } = setColor(configColor.base);
-            pickerColor.value = color;
+            setColor(configColor.base);
+            const hex = rgbToHex(configColor.base);
+            pickerColor.value = hex;
           }
         }
 
@@ -449,6 +458,8 @@
         //   d1r = realValue1;
         //   d2r = realValue2;
         // }
+        // d1r = cubicBezier(d1r, 0.64, -0.00, 0.39, 1.00 );
+        // d2r = cubicBezier(d2r, 0.64, -0.00, 0.39, 1.00 );
 
         d1r = Math.min(1, Math.max(0, d1r));
         d2r = Math.min(1, Math.max(0, d2r));
@@ -472,7 +483,6 @@
         //   const c = configColor1.base[j] + Math.round(value * (configColor2.base[j] - configColor1.base[j]) / 255);
         //   dataR[i + j] = c;
         // }
-        // value = Math.round(cubicBezier(value / 255, 0.64, -0.00, 0.39, 1.00 ) * 255);
 
         dataR[i] = value;
         dataR[i + 1] = value;
