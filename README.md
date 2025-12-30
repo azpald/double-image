@@ -8,6 +8,14 @@ This is especially useful for platforms like X (Twitter), where the same image c
 
 By carefully adjusting RGB values and the alpha channel, an image can appear differently depending on the background color, or remain invisible on one background while visible on another.
 
+### Image example
+
+| View | Image |
+| ---- | ----- |
+| Generated image     | ![](https://raw.githubusercontent.com/azpald/double-image/refs/heads/main/img/example-generated.png) |
+| On black background | ![](https://raw.githubusercontent.com/azpald/double-image/refs/heads/main/img/example-onblack.png)   |
+| On white background | ![](https://raw.githubusercontent.com/azpald/double-image/refs/heads/main/img/example-onwhite.png)   |
+
 ### Grayscale example
 
 1. Preserving appearance on a white background
