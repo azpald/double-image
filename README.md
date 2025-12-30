@@ -6,7 +6,7 @@ This is especially useful for platforms like X (Twitter), where the same image c
 
 ## The technique
 
-By carefully adjusting RGB values and the alpha channel, an image can appear differently depending on the background color, or remain invisible on one background while visible on another.
+By adjusting RGB values and the alpha channel, a single image can display different visuals depending on the background color, or remain invisible on one background while visible on another.
 
 ### Image example
 
