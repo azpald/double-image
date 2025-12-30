@@ -1,0 +1,85 @@
+<input type="file" accept="image/*, android/allowCamera" id="ir_input_img1" />
+<a href="#" id="download">download</a>
+
+<script>
+  function crc32(bytes) {
+    let crc = 0xFFFFFFFF;
+
+    for (let i = 0; i < bytes.length; i++) {
+      crc ^= bytes[i];
+      for (let j = 0; j < 8; j++) {
+        const mask = -(crc & 1);
+        crc = (crc >>> 1) ^ (0xEDB88320 & mask);
+      }
+    }
+
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+
+function addPngPadding(arrayBuffer, targetSize) {
+  const bytes = new Uint8Array(arrayBuffer);
+  const currentSize = bytes.length;
+  console.log("tail: ", bytes.slice(-16));
+
+  if (currentSize >= targetSize) return bytes;
+
+  // Find IEND chunk
+  let iendOffset = -1;
+  for (let i = 0; i <= bytes.length - 8; i++) {
+    if (
+      bytes[i] === 0x49 && // I
+      bytes[i+1] === 0x45 && // E
+      bytes[i+2] === 0x4E && // N
+      bytes[i+3] === 0x44 // D
+    ) {
+      console.log("IEND found");
+      iendOffset = i - 4;
+      break;
+    }
+  }
+  if (iendOffset < 0) throw new Error("Invalid PNG");
+
+  const overhead = 12 + "Padding".length + 1;
+  const padLen = targetSize - currentSize - overhead;
+  if (padLen <= 0) return bytes;
+
+  const text = new Uint8Array(padLen).fill(0x41); // 'A'
+  const keyword = new TextEncoder().encode("Padding\0");
+
+  const chunkData = new Uint8Array(keyword.length + text.length);
+  chunkData.set(keyword);
+  chunkData.set(text, keyword.length);
+
+  const chunk = new Uint8Array(12 + chunkData.length);
+  const view = new DataView(chunk.buffer);
+
+  view.setUint32(0, chunkData.length);
+  chunk.set([0x74,0x45,0x58,0x74], 4); // tEXt
+  chunk.set(chunkData, 8);
+  view.setUint32(8 + chunkData.length, crc32(chunk.slice(4, 8 + chunkData.length)));
+
+  const output = new Uint8Array(bytes.length + chunk.length);
+  output.set(bytes.slice(0, iendOffset));
+  output.set(chunk, iendOffset);
+  output.set(bytes.slice(iendOffset), iendOffset + chunk.length);
+
+  return output;
+}
+
+const inputImg = document.getElementById("ir_input_img1");
+const download = document.getElementById("download");
+inputImg.oninput = async e => {
+  const file = e.target.files[0];
+  const buffer = await file.arrayBuffer();
+
+  const modified = addPngPadding(buffer, 299 * 1024);
+
+  const blob = new Blob([modified], { type: "image/png" });
+  const url = URL.createObjectURL(blob);
+
+  download.href = url;
+  download.download = "padded.png";
+};
+
+
+</script>
