@@ -194,8 +194,10 @@
       <div class="column result-row">
         <div class="btn-controls">
           <span style="padding: 4px 8px;">Canvas size:</span>
-          <button type="button" onclick="setCanvasSize(900,300)">Twitter banner (900 x 300)</button>
-          <button type="button" onclick="setCanvasSize(400,300)">(400 x 300)</button>
+          <button type="button" onclick="setCanvasSize(1500, 500)">(1500 x 500)</button>
+          <button type="button" onclick="setCanvasSize(800, 600)">(800 x 600)</button>
+          <button type="button" onclick="setCanvasSize(400, 300)">(400 x 300)</button>
+          <button type="button" onclick="setCanvasSize(300, 200)">(300 x 200)</button>
         </div>
       </div>
       <div class="column result-row">&nbsp;</div>
@@ -221,6 +223,7 @@
     <canvas id="ir_canvas_result"></canvas>
   </div>
 
+  <script src="js/utils.js"></script>
   <script>
     const resultCanvas = document.getElementById('ir_canvas_result');
     const bgButtons = document.querySelectorAll('#bg-controls button');
@@ -246,42 +249,6 @@
 
 
   <script>
-    function cubicBezier(t, p1, p2, p3, p4) {
-      // Clamp input to [0, 1]
-      t = Math.max(0, Math.min(1, t));
-
-      const u = 1 - t;
-
-      return (
-        u * u * u * p1 +
-        3 * u * u * t * p2 +
-        3 * u * t * t * p3 +
-        t * t * t * p4
-      );
-    }
-    function jsonDecode(str) {
-      if (!str) return null;
-      try {
-        const parsed = JSON.parse(str);
-        return parsed;
-      } catch (error) {
-        return null;
-      }
-    }
-    function hexToRgb(hex) {
-      hex = hex.replace("#", "");
-      return [
-        parseInt(hex.substring(0, 2), 16),
-        parseInt(hex.substring(2, 4), 16),
-        parseInt(hex.substring(4, 6), 16),
-      ];
-    }
-    function rgbToHex(rgb) {
-      const hex = rgb.map(component => {
-        return (component % 256).toString(16).padStart(2, '0');
-      }).join('');
-      return `#${hex}`;
-    }
 
     const BORDER = 1;
     let CANVAS_WIDTH = 900, CANVAS_HEIGHT = 300;
@@ -305,8 +272,6 @@
     function resizeCanvas(canvas, width = 400, height = 300) {
       canvas.width = width;
       canvas.height = height;
-      // canvas.width = 900;
-      // canvas.height = 300;
     }
 
     // Wait for DOM to be fully ready
@@ -546,6 +511,8 @@
           const colorIdx = Math.floor(i / 4);
           const x = colorIdx % canvasR.width;
           const y = Math.floor(colorIdx / canvasR.width);
+          // d2r = (d1r + d2r) / 2;
+          // d1r = d2r;
           if ((x + y) % 2) {
             d1r = d2r;
           } else {
